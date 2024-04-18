@@ -212,6 +212,22 @@ class DouYinCrawler(AbstractCrawler):
             headless: bool = True
     ) -> BrowserContext:
         """Launch browser and create browser context"""
+
+        platforms = [
+            {'key': 'android', 'name': 'Android'},
+            {'key': 'iphone', 'name': 'iOS'},
+            {'key': 'ipad', 'name': 'iOS'},
+            {'key': 'ipod', 'name': 'iOS'},
+            {'key': 'macintosh', 'name': 'Mac OS'},
+            {'key': 'windows', 'name': 'Windows'},
+            {'key': 'linux', 'name': 'Linux'}
+        ]
+
+        platform = ''
+        for item in platforms:
+            if item['key'] in user_agent:
+                platform = item['name']
+
         if config.SAVE_LOGIN_STATE:
             user_data_dir = os.path.join(os.getcwd(), "browser_data",
                                          config.USER_DATA_DIR % self.platform)  # type: ignore
@@ -221,14 +237,22 @@ class DouYinCrawler(AbstractCrawler):
                 headless=headless,
                 proxy=playwright_proxy,  # type: ignore
                 viewport={"width": 1920, "height": 1080},
-                user_agent=user_agent
+                user_agent=user_agent,
+                extra_http_headers={
+                    'Sec-Ch-Ua': '"Microsoft Edge";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
+                    'Sec-Ch-Ua-Platform': f'"{platform}"'
+                }
             )  # type: ignore
             return browser_context
         else:
             browser = await chromium.launch(headless=headless, proxy=playwright_proxy)  # type: ignore
             browser_context = await browser.new_context(
                 viewport={"width": 1920, "height": 1080},
-                user_agent=user_agent
+                user_agent=user_agent,
+                extra_http_headers={
+                    'Sec-Ch-Ua': '"Microsoft Edge";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
+                    'Sec-Ch-Ua-Platform': f'"{platform}"'
+                }
             )
             return browser_context
 

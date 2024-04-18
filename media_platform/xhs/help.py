@@ -1,8 +1,10 @@
 import ctypes
+import datetime
 import json
 import random
 import time
 import urllib.parse
+import zlib
 
 
 def sign(a1="", b1="", x_s="", x_t=""):
@@ -92,7 +94,7 @@ def mrc(e):
     ]
     o = -1
 
-    def right_without_sign(num: int, bit: int=0) -> int:
+    def right_without_sign(num: int, bit: int = 0) -> int:
         val = ctypes.c_uint32(num).value >> bit
         MAX32INT = 4294967295
         return (val + (MAX32INT + 1)) % (2 * (MAX32INT + 1)) - MAX32INT - 1
@@ -264,6 +266,7 @@ img_cdns = [
     "https://sns-img-qn.xhscdn.com",
 ]
 
+
 def get_img_url_by_trace_id(trace_id: str, format_type: str = "png"):
     return f"{random.choice(img_cdns)}/{trace_id}?imageView2/format/{format_type}"
 
@@ -276,11 +279,42 @@ def get_trace_id(img_url: str):
     return img_url.split("/")[-1]
 
 
+def generate_local_id():
+    # 获取平台代码 windows = 5
+    platform_code = 5
+
+    # 生成时间戳的十六进制表示
+    timestamp_hex = hex(int(datetime.datetime.now().timestamp()))[2:]
+
+    # 生成随机字符串
+    random_string = gen_random_string(30)
+
+    # 构建本地ID的基础部分
+    base_id = f"{timestamp_hex}{random_string}{platform_code}0000"
+
+    # 计算CRC32校验码
+    crc = crc32(base_id)
+
+    # 拼接校验码并截取前52个字符作为最终的本地ID
+    local_id = f"{base_id}{crc:08x}"[:52]
+
+    return local_id
+
+
+CHARSET = "abcdefghijklmnopqrstuvwxyz1234567890"
+
+
+def gen_random_string(length):
+    return ''.join(random.choice(CHARSET) for _ in range(length))
+
+
+def crc32(input_string):
+    return zlib.crc32(input_string.encode()) & 0xffffffff
+
+
 if __name__ == '__main__':
     _img_url = "https://sns-img-bd.xhscdn.com/7a3abfaf-90c1-a828-5de7-022c80b92aa3"
     # 获取一个图片地址在多个cdn下的url地址
     # final_img_urls = get_img_urls_by_trace_id(get_trace_id(_img_url))
     final_img_url = get_img_url_by_trace_id(get_trace_id(_img_url))
     print(final_img_url)
-
-

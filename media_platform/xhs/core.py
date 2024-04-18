@@ -1,6 +1,8 @@
 import asyncio
 import os
 import random
+import hashlib
+import uuid
 from asyncio import Task
 from typing import Dict, List, Optional, Tuple
 
@@ -18,6 +20,7 @@ from .client import XiaoHongShuClient
 from .exception import DataFetchError
 from .field import SearchSortType
 from .login import XiaoHongShuLogin
+from .help import generate_local_id
 
 
 class XiaoHongShuCrawler(AbstractCrawler):
@@ -58,14 +61,37 @@ class XiaoHongShuCrawler(AbstractCrawler):
             # stealth.min.js is a js script to prevent the website from detecting the crawler.
             await self.browser_context.add_init_script(path="libs/stealth.min.js")
             # add a cookie attribute webId to avoid the appearance of a sliding captcha on the webpage
-            await self.browser_context.add_cookies([{
-                'name': "webId",
-                'value': "xxx123",  # any value
-                'domain': ".xiaohongshu.com",
-                'path': "/"
-            }])
+            # local_id = generate_local_id()
+            # await self.browser_context.add_cookies([
+            #     {
+            #         'name': "a1",
+            #         'value': local_id,
+            #         'domain': "xiaohongshu.com",
+            #         'path': "/"
+            #     }, {
+            #         'name': "webId",
+            #         'value': hashlib.md5(local_id.encode('utf-8')).hexdigest(),
+            #         'domain': "xiaohongshu.com",
+            #         'path': "/"
+            #     }, {
+            #         'name': "xsecappid",
+            #         'value': 'xhs-pc-web',
+            #         'domain': "xiaohongshu.com",
+            #         'path': "/"
+            #     }, {
+            #         'name': "webBuild",
+            #         'value': '4.12.3',
+            #         'domain': ".xiaohongshu.com",
+            #         'path': "/"
+            #     }])
+
             self.context_page = await self.browser_context.new_page()
             await self.context_page.goto(self.index_url)
+
+            # print cookies
+            cookies = await self.browser_context.cookies()
+            _, cookie_dict = utils.convert_cookies(cookies)
+            print(cookie_dict)
 
             # Create a client to interact with the xiaohongshu website.
             self.xhs_client = await self.create_xhs_client(httpx_proxy_format)
@@ -260,6 +286,21 @@ class XiaoHongShuCrawler(AbstractCrawler):
     ) -> BrowserContext:
         """Launch browser and create browser context"""
         utils.logger.info("[XiaoHongShuCrawler.launch_browser] Begin create browser context ...")
+        platforms = [
+            {'key': 'android', 'name': 'Android'},
+            {'key': 'iphone', 'name': 'iOS'},
+            {'key': 'ipad', 'name': 'iOS'},
+            {'key': 'ipod', 'name': 'iOS'},
+            {'key': 'macintosh', 'name': 'Mac OS'},
+            {'key': 'windows', 'name': 'Windows'},
+            {'key': 'linux', 'name': 'Linux'}
+        ]
+
+        platform = ''
+        for item in platforms:
+            if item['key'] in user_agent:
+                platform = item['name']
+
         if config.SAVE_LOGIN_STATE:
             # feat issue #14
             # we will save login state to avoid login every time
@@ -271,14 +312,22 @@ class XiaoHongShuCrawler(AbstractCrawler):
                 headless=headless,
                 proxy=playwright_proxy,  # type: ignore
                 viewport={"width": 1920, "height": 1080},
-                user_agent=user_agent
+                user_agent=user_agent,
+                extra_http_headers={
+                    'Sec-Ch-Ua': '"Microsoft Edge";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
+                    'Sec-Ch-Ua-Platform': f'"{platform}"'
+                }
             )
             return browser_context
         else:
             browser = await chromium.launch(headless=headless, proxy=playwright_proxy)  # type: ignore
             browser_context = await browser.new_context(
                 viewport={"width": 1920, "height": 1080},
-                user_agent=user_agent
+                user_agent=user_agent,
+                extra_http_headers={
+                    'Sec-Ch-Ua': '"Microsoft Edge";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
+                    'Sec-Ch-Ua-Platform': f'"{platform}"'
+                }
             )
             return browser_context
 

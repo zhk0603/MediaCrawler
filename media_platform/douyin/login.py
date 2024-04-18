@@ -59,8 +59,8 @@ class DouYinLogin(AbstractLogin):
         utils.logger.info(f"[DouYinLogin.begin] login finished then check login state ...")
         try:
             await self.check_login_state()
-        except RetryError:
-            utils.logger.info("[DouYinLogin.begin] login failed please confirm ...")
+        except RetryError as e:
+            utils.logger.info("[DouYinLogin.begin] login failed please confirm. Error: %s", str(e))
             sys.exit()
 
         # wait for redirect
@@ -68,7 +68,7 @@ class DouYinLogin(AbstractLogin):
         utils.logger.info(f"[DouYinLogin.begin] Login successful then wait for {wait_redirect_seconds} seconds redirect ...")
         await asyncio.sleep(wait_redirect_seconds)
 
-    @retry(stop=stop_after_attempt(20), wait=wait_fixed(1), retry=retry_if_result(lambda value: value is False))
+    @retry(stop=stop_after_attempt(120), wait=wait_fixed(1), retry=retry_if_result(lambda value: value is False))
     async def check_login_state(self):
         """Check if the current login status is successful and return True otherwise return False"""
         current_cookie = await self.browser_context.cookies()
